@@ -347,6 +347,7 @@ impl Client {
     ///
     /// This request was introduced in specification version 3.17.0.
     pub async fn workspace_diagnostic_refresh(&self) -> jsonrpc::Result<()> {
+        use lsp_types::request::WorkspaceDiagnosticRefresh;
         self.send_request::<WorkspaceDiagnosticRefresh>(()).await
     }
 
