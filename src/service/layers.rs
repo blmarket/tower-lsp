@@ -6,7 +6,7 @@ use std::task::{Context, Poll};
 
 use futures::future::{self, BoxFuture, FutureExt};
 use tower::{Layer, Service};
-use tracing::{info, warn};
+use tracing::{info, span, warn, Instrument as _, Level};
 
 use super::ExitedError;
 use crate::jsonrpc::{not_initialized_error, Error, Id, Request, Response};
@@ -293,7 +293,12 @@ where
 
     fn call(&mut self, req: Request) -> Self::Future {
         match req.id().cloned() {
-            Some(id) => self.pending.execute(id, self.inner.call(req)).boxed(),
+            Some(id) => {
+                let span = span!(Level::INFO, "json_rpc", id = format!("{}", id));
+                self.pending
+                    .execute(id, self.inner.call(req).instrument(span))
+                    .boxed()
+            }
             None => self.inner.call(req).boxed(),
         }
     }

@@ -121,7 +121,7 @@ where
             .map(|res| Ok(Message::Response(res)))
             .forward(responses_tx.clone().sink_map_err(|_| unreachable!()))
             .map(|_| ());
-        
+
         let print_output = stream_select!(responses_rx, client_requests.map(Message::Request))
             .map(Ok)
             .forward(framed_stdout.sink_map_err(|e| error!("failed to encode message: {}", e)))

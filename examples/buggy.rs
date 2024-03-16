@@ -30,7 +30,7 @@ impl LanguageServer for Backend {
         self.log("LOG 3").await;
         self.log("LOG 4").await;
         self.log("LOG 5").await;
-        
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(

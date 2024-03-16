@@ -3,6 +3,7 @@
 use std::fmt::{self, Debug, Formatter};
 use std::future::Future;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use dashmap::{mapref::entry::Entry, DashMap};
 use futures::future::{self, Either};
@@ -12,7 +13,7 @@ use super::ExitedError;
 use crate::jsonrpc::{Error, Id, Response};
 
 /// A hashmap containing pending server requests, keyed by request ID.
-pub struct Pending(Arc<DashMap<Id, future::AbortHandle>>);
+pub struct Pending(Arc<DashMap<Id, (SystemTime, future::AbortHandle)>>);
 
 impl Pending {
     /// Creates a new pending server requests map.
@@ -34,7 +35,7 @@ impl Pending {
     {
         if let Entry::Vacant(entry) = self.0.entry(id.clone()) {
             let (handler_fut, abort_handle) = future::abortable(fut);
-            entry.insert(abort_handle);
+            entry.insert((SystemTime::now(), abort_handle));
 
             let requests = self.0.clone();
             Either::Left(async move {
@@ -57,9 +58,17 @@ impl Pending {
     /// This will force the future to resolve to a "canceled" error response. If the future has
     /// already completed, this method call will do nothing.
     pub fn cancel(&self, id: &Id) {
-        if let Some((_, handle)) = self.0.remove(id) {
+        if let Some((_, (st, handle))) = self.0.remove(id) {
             handle.abort();
-            info!("successfully cancelled request with ID: {}", id);
+            let elasp_usec = st
+                .elapsed()
+                .expect("cannot calculate elapsed time")
+                .as_micros();
+            info!(
+                rpc_id = format!("{}", id),
+                elasp_usec = elasp_usec,
+                "successfully cancelled request"
+            );
         } else {
             debug!(
                 "client asked to cancel request {}, but no such pending request exists, ignoring",
@@ -70,7 +79,7 @@ impl Pending {
 
     /// Cancels all pending request handlers, if any.
     pub fn cancel_all(&self) {
-        self.0.retain(|_, handle| {
+        self.0.retain(|_, (_, handle)| {
             handle.abort();
             false
         });
