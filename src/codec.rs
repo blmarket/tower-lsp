@@ -119,7 +119,7 @@ impl<T: Serialize> Encoder for LanguageServerCodec<T> {
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let msg = serde_json::to_string(&item)?;
-        trace!("-> {}", msg);
+        trace!(message = msg, "->");
 
         // Reserve just enough space to hold the `Content-Length: ` and `\r\n\r\n` constants,
         // the length of the message, and the message body.
@@ -138,7 +138,7 @@ impl<T: Serialize> Encoder<T> for LanguageServerCodec<T> {
 
     fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let msg = serde_json::to_string(&item)?;
-        trace!("-> {}", msg);
+        trace!(message = msg, "->");
 
         // Reserve just enough space to hold the `Content-Length: ` and `\r\n\r\n` constants,
         // the length of the message, and the message body.
@@ -178,7 +178,7 @@ impl<T: DeserializeOwned> Decoder for LanguageServerCodec<T> {
             let result = if message.is_empty() {
                 Ok(None)
             } else {
-                trace!("<- {}", message);
+                trace!(message = message, "<-");
                 match serde_json::from_str(message) {
                     Ok(parsed) => Ok(Some(parsed)),
                     Err(err) => Err(err.into()),
